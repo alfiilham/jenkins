@@ -1,0 +1,88 @@
+pipeline {
+    agent any
+    environment {
+        DOCKER_USERNAME = credentials('usernamedocker')
+        DOCKER_PASSWORD = credentials('passworddocker')
+        APP_NAME = 'php-app'
+        OPENSHIFT_PROJECT = 'test'
+        OC_TOKEN = 'sha256~BXgCtt0Bu8R0Gxwuwg5GiwhDH4lURrVV0jhZ7b431Xg'
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Generate Date-Based Tag') {
+            steps {
+                script {
+                    // Get the current date in the format YYYYMMDD
+                    def currentDate = new Date().format('yyyyMMdd')
+                    // Get the current time in hours and minutes
+                    def currentTime = new Date().format('HHmm')
+                    // Combine date and time to create a unique tag
+                    env.NEW_VERSION = "${currentDate}-${currentTime}"
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Generate the image name using the new date-based version
+                    env.IMAGE_NAME = "fadhellya/${APP_NAME}:${env.NEW_VERSION}"
+
+                    // Build the Docker image
+                    sh '''
+                    docker build -t ${IMAGE_NAME} .
+                    '''
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    sh '''
+                    echo "${DOCKER_PASSWORD}" | docker login -u ${DOCKER_USERNAME} --password-stdin
+                    docker push ${IMAGE_NAME}
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to Opensihft') {
+            steps {
+                script {
+                    echo "Deploying to  Cluster"
+                    
+                    // Use kubectl to apply Opensihft deployment manifests
+                    sh '''
+                    oc login --token=${OC_TOKEN} --server=https://10.20.10.221:6443 --insecure-skip-tls-verify=true
+                    oc project ${OPENSHIFT_PROJECT}
+                    oc set image deployment/${APP_NAME} ${APP_NAME}=${IMAGE_NAME}
+                    oc rollout restart deployment/${APP_NAME}
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Deployment to Opensihft succeeded!'
+        }
+        failure {
+            echo 'Deployment to Opensihft failed!'
+        }
+    }
+}
