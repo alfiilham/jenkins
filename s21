@@ -1,0 +1,102 @@
+pipeline {
+    agent any
+    environment {
+        APP_NAME = 'php-app'
+        OPENSHIFT_PROJECT = 'test'
+        OC_TOKEN = 'sha256~BXgCtt0Bu8R0Gxwuwg5GiwhDH4lURrVV0jhZ7b431Xg'
+        GIT_REPO_URL = 'gitlab.com/firstgroup2112743/sample-project-devops.git'  // GitLab repository URL without protocol
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Checkout code from the repository (Git, for example)
+                checkout scm
+            }
+        }
+
+        stage('Login to OpenShift') {
+            steps {
+                script {
+                    echo "Logging into OpenShift"
+                    sh '''
+                    oc login --token=${OC_TOKEN} --server=https://10.20.10.221:6443 --insecure-skip-tls-verify=true
+                    oc project ${OPENSHIFT_PROJECT}
+                    '''
+                }
+            }
+        }
+
+        stage('Create or Update BuildConfig') {
+            steps {
+                script {
+                    echo "Creating or updating BuildConfig for ${APP_NAME}"
+                    sh '''
+                    cat <<EOF | oc apply -f -
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: ${APP_NAME}
+  namespace: ${OPENSHIFT_PROJECT}
+spec:
+  source:
+    type: Git
+    git:
+      uri: 'https://${GIT_REPO_URL}'  # Use GitLab
+      ref: main
+  strategy:
+    type: Docker
+  output:
+    to:
+      kind: ImageStreamTag
+      name: '${APP_NAME}:latest'
+EOF
+                    '''
+                }
+            }
+        }
+
+        stage('Start Build in OpenShift') {
+            steps {
+                script {
+                    echo "Starting the build in OpenShift for ${APP_NAME}"
+                    sh '''
+                    oc start-build ${APP_NAME} --wait
+                    '''
+                }
+            }
+        }
+        
+        stage('Deploy to Opensihft') {
+            steps {
+                script {
+                    echo "Deploying to  Cluster"
+                    
+                    // Use kubectl to apply Opensihft deployment manifests
+                    sh '''
+                    oc login --token=${OC_TOKEN} --server=https://10.20.10.221:6443 --insecure-skip-tls-verify=true
+                    oc project ${OPENSHIFT_PROJECT}
+                    oc set image deployment/${APP_NAME} ${APP_NAME}=image-registry.openshift-image-registry.svc:5000/${OPENSHIFT_PROJECT}/${APP_NAME}:latest
+                    oc rollout restart deployment/${APP_NAME}
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Deployment to OpenShift succeeded!'
+        }
+        failure {
+            echo 'Deployment to OpenShift failed!'
+        }
+    }
+}
