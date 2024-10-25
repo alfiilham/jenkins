@@ -91,6 +91,15 @@ spec:
           ports:
             - containerPort: 8080
               protocol: TCP
+          env:
+            - name: DB_HOST
+              value: mariadb
+            - name: DB_USER
+              value: mariadb
+            - name: DB_PASS
+              value: mariadb
+            - name: DB_NAME
+              value: akademik
   strategy:
     type: RollingUpdate
     rollingUpdate:
