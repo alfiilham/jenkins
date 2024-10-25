@@ -1,8 +1,9 @@
 pipeline {
     agent any
     environment {
-        DOCKER_USERNAME = credentials('usernamedocker')
-        DOCKER_PASSWORD = credentials('passworddocker')
+        NEXUS_HOST = '10.100.11.111:8082'
+        NEXUS_USERNAME = credentials('usernamenexus')
+        NEXUS_PASSWORD = credentials('passwordnexus')
         APP_NAME = 'php-app'
         OPENSHIFT_PROJECT = 'test'
         OC_TOKEN = 'sha256~BXgCtt0Bu8R0Gxwuwg5GiwhDH4lURrVV0jhZ7b431Xg'
@@ -36,7 +37,7 @@ pipeline {
             steps {
                 script {
                     // Generate the image name using the new date-based version
-                    env.IMAGE_NAME = "fadhellya/${APP_NAME}:${env.NEW_VERSION}"
+                    env.IMAGE_NAME = "${NEXUS_HOST}/${APP_NAME}:${env.NEW_VERSION}"
 
                     // Build the Docker image
                     sh '''
@@ -50,7 +51,7 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    echo "${DOCKER_PASSWORD}" | docker login -u ${DOCKER_USERNAME} --password-stdin
+                    echo "${NEXUS_PASSWORD}" | docker login ${NEXUS_HOST} -u ${NEXUS_USERNAME} --password-stdin
                     docker push ${IMAGE_NAME}
                     '''
                 }
