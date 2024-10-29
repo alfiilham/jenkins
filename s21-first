@@ -2,9 +2,9 @@ pipeline {
     agent any
     environment {
         APP_NAME = 'php-app'
-        OPENSHIFT_PROJECT = 'test'
-        OC_TOKEN = 'sha256~BXgCtt0Bu8R0Gxwuwg5GiwhDH4lURrVV0jhZ7b431Xg'
-        GIT_REPO_URL = 'gitlab.com/firstgroup2112743/sample-project-devops.git'  // GitLab repository URL without protocol
+        OPENSHIFT_PROJECT = 'testing'
+        OC_TOKEN = 'sha256~bEOsvMxVwzbwT-ig1Yq-S0jSy0vg6qCxFEqRknm8fgo'
+        GIT_REPO_URL = 'https://gitlab.com/firstgroup2112743/sample-project-devops-private.git'  // GitLab repository URL without protocol
     }
 
     options {
@@ -46,8 +46,10 @@ spec:
   source:
     type: Git
     git:
-      uri: 'https://${GIT_REPO_URL}'  # Use GitLab
+      uri: '${GIT_REPO_URL}'  # Use GitLab
       ref: main
+    sourceSecret:
+      name: gitlab
   strategy:
     type: Docker
   output:
@@ -65,6 +67,7 @@ EOF
                 script {
                     echo "Starting the build in OpenShift for ${APP_NAME}"
                     sh '''
+                    oc create imagestream ${APP_NAME}
                     oc start-build ${APP_NAME} --wait
                     '''
                 }
