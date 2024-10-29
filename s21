@@ -3,8 +3,11 @@ pipeline {
     environment {
         APP_NAME = 'php-app'
         OPENSHIFT_PROJECT = 'test'
-        OC_TOKEN = 'sha256~BXgCtt0Bu8R0Gxwuwg5GiwhDH4lURrVV0jhZ7b431Xg'
+        OC_TOKEN = 'sha256~bEOsvMxVwzbwT-ig1Yq-S0jSy0vg6qCxFEqRknm8fgo'
         GIT_REPO_URL = 'gitlab.com/firstgroup2112743/sample-project-devops.git'  // GitLab repository URL without protocol
+        SECRET_NAME = 'gitlab-auth'
+        GITLAB_USERNAME = 'alfiilham'  // Jenkins credentials ID for GitLab username
+        GITLAB_TOKEN = 'glpat-YHrWhNHBD88pnykV_zGD'        // Jenkins credentials ID for GitLab access token
     }
 
     options {
@@ -26,6 +29,28 @@ pipeline {
                     sh '''
                     oc login --token=${OC_TOKEN} --server=https://10.20.10.221:6443 --insecure-skip-tls-verify=true
                     oc project ${OPENSHIFT_PROJECT}
+                    '''
+                }
+            }
+        }
+
+        stage('Create GitLab Basic Auth Secret') {
+            steps {
+                script {
+                    echo "Creating GitLab Basic Auth secret in OpenShift"
+
+                    sh '''
+                    cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitlab
+  namespace: ${OPENSHIFT_PROJECT}
+type: kubernetes.io/basic-auth
+stringData:
+  username: ${GITLAB_USERNAME}
+  password: ${GITLAB_TOKEN}
+EOF
                     '''
                 }
             }
