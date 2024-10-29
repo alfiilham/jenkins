@@ -48,6 +48,8 @@ spec:
     git:
       uri: 'https://${GIT_REPO_URL}'  # Use GitLab
       ref: main
+    sourceSecret:
+      name: gitlab
   strategy:
     type: Docker
   output:
