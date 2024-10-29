@@ -2,10 +2,10 @@ pipeline {
     agent any
     environment {
         APP_NAME = 'php-app'
-        OPENSHIFT_PROJECT = 'testing'
+        OPENSHIFT_PROJECT = 'test'
         OC_TOKEN = 'sha256~bEOsvMxVwzbwT-ig1Yq-S0jSy0vg6qCxFEqRknm8fgo'
         GIT_REPO_URL = 'https://gitlab.com/firstgroup2112743/sample-project-devops.git'  // GitLab repository URL without protocol
-        SECRET_NAME = 'gitlab-auth'
+        SECRET_NAME = 'gitlab-token'
         GITLAB_USERNAME = 'alfiilham'  // Jenkins credentials ID for GitLab username
         GITLAB_TOKEN = 'glpat-YHrWhNHBD88pnykV_zGD'        // Jenkins credentials ID for GitLab access token
     }
@@ -37,10 +37,11 @@ pipeline {
         stage('Create GitLab Basic Auth Secret') {
             steps {
                 script {
-                    echo "Creating GitLab Basic Auth secret in OpenShift"
-
+                    echo "Checking if GitLab Basic Auth secret '${SECRET_NAME}' exists in OpenShift..."
                     sh '''
-                    cat <<EOF | oc apply -f -
+                    if ! oc get secret ${SECRET_NAME} -n ${OPENSHIFT_PROJECT} >/dev/null 2>&1; then
+                        echo "Secret '${SECRET_NAME}' does not exist. Creating it now..."
+                        cat <<EOF | oc apply -f -
 apiVersion: v1
 kind: Secret
 metadata:
@@ -51,6 +52,9 @@ stringData:
   username: ${GITLAB_USERNAME}
   password: ${GITLAB_TOKEN}
 EOF
+                    else
+                        echo "Secret '${SECRET_NAME}' already exists. Skipping creation."
+                    fi
                     '''
                 }
             }
@@ -92,7 +96,12 @@ EOF
                 script {
                     echo "Starting the build in OpenShift for ${APP_NAME}"
                     sh '''
-                    oc create imagestream ${APP_NAME}
+                    if ! oc get imagestream ${APP_NAME} -n ${OPENSHIFT_PROJECT} >/dev/null 2>&1; then
+                        echo "ImageStream ${APP_NAME} does not exist. Creating it now..."
+                        oc create imagestream ${APP_NAME} -n ${OPENSHIFT_PROJECT}
+                    else
+                        echo "ImageStream ${APP_NAME} already exists. Skipping creation."
+                    fi
                     oc start-build ${APP_NAME} --wait
                     '''
                 }
