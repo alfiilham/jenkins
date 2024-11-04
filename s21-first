@@ -6,8 +6,8 @@ pipeline {
         OC_TOKEN = 'sha256~bEOsvMxVwzbwT-ig1Yq-S0jSy0vg6qCxFEqRknm8fgo'
         GIT_REPO_URL = 'https://gitlab.com/firstgroup2112743/sample-project-devops.git'  // GitLab repository URL without protocol
         SECRET_NAME = 'gitlab-token'
-        GITLAB_USERNAME = 'alfiilham'  // Jenkins credentials ID for GitLab username
-        GITLAB_TOKEN = 'glpat-YHrWhNHBD88pnykV_zGD'        // Jenkins credentials ID for GitLab access token
+        GITLAB_USERNAME = 'credentials('gitlabuser')'  // Jenkins credentials ID for GitLab username
+        GITLAB_TOKEN = 'credentials('gitlabpass')'        // Jenkins credentials ID for GitLab access token
     }
 
     options {
